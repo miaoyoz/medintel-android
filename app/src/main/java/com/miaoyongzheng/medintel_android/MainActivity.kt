@@ -5,43 +5,70 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.miaoyongzheng.medintel_android.ui.theme.MedintelandroidTheme
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.miaoyongzheng.medintel_android.ui.screen.chatbot.ChatBotScreen
+import com.miaoyongzheng.medintel_android.ui.screen.main.MainScreen
+import com.miaoyongzheng.medintel_android.ui.screen.welcome.WelcomeScreen
+import com.miaoyongzheng.medintel_android.ui.theme.AppTheme
+import kotlinx.serialization.Serializable
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MedintelandroidTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+            AppTheme {
+                MyApp()
             }
         }
     }
 }
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+@Serializable
+object Welcome
 
-@Preview(showBackground = true)
+@Serializable
+object Main
+
+@Serializable
+object Bot
+
+
 @Composable
-fun GreetingPreview() {
-    MedintelandroidTheme {
-        Greeting("Android")
+fun MyApp(modifier: Modifier = Modifier) {
+    val navController = rememberNavController()
+    NavHost(
+        navController = navController,
+        startDestination = Welcome,
+    ) {
+        composable<Welcome>() {
+            WelcomeScreen(
+                modifier = Modifier.fillMaxSize(),
+                onNavigateToHome = {
+                    navController.navigate(route = Main) {
+                        launchSingleTop = true
+                        popUpTo(Welcome) {
+                            inclusive = true
+                        }
+                    }
+                }
+            )
+        }
+        composable<Main> {
+            MainScreen(modifier = Modifier.fillMaxSize(),
+                onNavigateToBot = { navController.navigate(route = Bot) }
+            )
+        }
+        composable<Bot> {
+            ChatBotScreen()
+        }
     }
 }
+
+
+
+
