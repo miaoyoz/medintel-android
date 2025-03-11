@@ -40,6 +40,9 @@ android {
     buildFeatures {
         compose = true
     }
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.15"
+    }
 }
 
 dependencies {
@@ -70,9 +73,14 @@ dependencies {
     //navigation
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.material)
 
     //coil
     implementation(libs.coil.compose)
+
+    //retrofit
+    implementation(libs.converter.gson)
+    implementation(libs.retrofit)
 
 }
 

@@ -28,42 +28,39 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Serializable
-object Welcome
 
-@Serializable
-object Main
-
-@Serializable
-object Bot
-
+object BeginRoute{
+    const val WELCOME = "WelcomeScreen"
+    const val MAIN = "MainScreen"
+    const val CHATBOT = "ChatBotScreen"
+}
 
 @Composable
 fun MyApp(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
     NavHost(
         navController = navController,
-        startDestination = Welcome,
+        startDestination = BeginRoute.WELCOME,
     ) {
-        composable<Welcome>() {
+        composable(BeginRoute.WELCOME) {
             WelcomeScreen(
                 modifier = Modifier.fillMaxSize(),
                 onNavigateToHome = {
-                    navController.navigate(route = Main) {
+                    navController.navigate(route = BeginRoute.MAIN) {
                         launchSingleTop = true
-                        popUpTo(Welcome) {
+                        popUpTo(BeginRoute.WELCOME) {
                             inclusive = true
                         }
                     }
                 }
             )
         }
-        composable<Main> {
+        composable(BeginRoute.MAIN) {
             MainScreen(modifier = Modifier.fillMaxSize(),
-                onNavigateToBot = { navController.navigate(route = Bot) }
+                onNavigateToBot = { navController.navigate(route = BeginRoute.CHATBOT) }
             )
         }
-        composable<Bot> {
+        composable(BeginRoute.CHATBOT) {
             ChatBotScreen()
         }
     }

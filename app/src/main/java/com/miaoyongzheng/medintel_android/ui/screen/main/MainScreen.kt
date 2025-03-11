@@ -29,11 +29,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,30 +42,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.miaoyongzheng.medintel_android.BeginRoute
 import com.miaoyongzheng.medintel_android.ui.component.Toast
 import com.miaoyongzheng.medintel_android.ui.screen.main.community.CommunityScreen
 import com.miaoyongzheng.medintel_android.ui.screen.main.home.HomeScreen
 import com.miaoyongzheng.medintel_android.ui.screen.main.message.MessageScreen
 import com.miaoyongzheng.medintel_android.ui.screen.main.profile.ProfileScreen
 import kotlinx.coroutines.delay
-import kotlinx.serialization.Serializable
 
-@Serializable
-sealed class Main {
-    @Serializable
-    data object Home : Main()
-
-    @Serializable
-    data object Community : Main()
-
-    @Serializable
-    data object Message : Main()
-
-    @Serializable
-    data object Profile : Main()
+object MainRoute {
+    const val HOME = "HomeScreen"
+    const val COMMUNITY = "CommunityScreen"
+    const val MESSAGE = "MessageScreen"
+    const val PROFILE = "ProfileScreen"
 }
 
 @Preview(showSystemUi = true, showBackground = true)
@@ -89,20 +81,21 @@ fun MainScreen(
     val toastAlpha by animateFloatAsState(
         targetValue = if (showAnimation) 0.7f else 0f, animationSpec = tween(durationMillis = 500)
     )
-    //当前导航的id
-    var selectedId by rememberSaveable  { mutableIntStateOf(1) }
+    //当前导航的路由
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
     //返回键监听
     BackHandler(enabled = true) {
         //如果当前不是Home，则会返回到Home
-        val currentRoute = navController.currentDestination?.route
-        if (selectedId != 1) {
-            navController.navigate(Main.Home) {
-                if (currentRoute != null) popUpTo(currentRoute) {
-                    inclusive = true
+        if (currentRoute != MainRoute.HOME) {
+            navController.navigate(MainRoute.HOME) {
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true // 保存当前状态
                 }
+                launchSingleTop = true // 确保只有一个实例
+                restoreState = true
             }
-            selectedId = 1
         } else {
             //误触判断
             val currentTime = System.currentTimeMillis()
@@ -111,52 +104,30 @@ fun MainScreen(
                 showAnimation = true
                 backPressTime = currentTime
             } else {
-                Log.d("miaoyoz1", "MainScreen: $activity")
                 activity?.finish()
             }
         }
     }
 
-    Scaffold(modifier = modifier.fillMaxSize(), bottomBar = {
-        MainBottomBar(modifier = Modifier
-            .fillMaxWidth()
-            .height(60.dp),
-            selectedId = selectedId,
-            onChangeId = {
-                if (it != 3) {
-                    selectedId = it
-                }
-                val currentRoute = navController.currentDestination?.route
-                when (it) {
-                    1 -> navController.navigate(Main.Home) {
-                        if (currentRoute != null) popUpTo(currentRoute) {
-                            inclusive = true
+    Scaffold(modifier = modifier.fillMaxSize(),
+        bottomBar = {
+            MainBottomBar(modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp),
+                currentRoute = currentRoute,
+                onNavigate = {
+                    when (it) {
+                        BeginRoute.CHATBOT -> onNavigateToBot()
+                        else -> navController.navigate(it) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true // 保存当前状态
+                            }
+                            launchSingleTop = true // 确保只有一个实例
+                            restoreState = true
                         }
                     }
-
-                    2 -> navController.navigate(Main.Community) {
-                        if (currentRoute != null) popUpTo(currentRoute) {
-                            inclusive = true
-                        }
-                    }
-
-                    3 -> onNavigateToBot()
-
-                    4 -> navController.navigate(Main.Message) {
-                        if (currentRoute != null) popUpTo(currentRoute) {
-                            inclusive = true
-                        }
-                    }
-
-                    5 -> navController.navigate(Main.Profile) {
-                        if (currentRoute != null) popUpTo(currentRoute) {
-                            inclusive = true
-                        }
-                    }
-
-                }
-            })
-    }) {
+                })
+        }) {
         Box(
             modifier = Modifier.padding(it), contentAlignment = Alignment.Center
         ) {
@@ -164,19 +135,19 @@ fun MainScreen(
                 NavHost(
                     modifier = Modifier.fillMaxSize(),
                     navController = navController,
-                    startDestination = Main.Home,
+                    startDestination = MainRoute.HOME,
                 ) {
-                    composable<Main.Home> {
+                    composable(MainRoute.HOME) {
                         HomeScreen()
                     }
-                    composable<Main.Community> {
+                    composable(MainRoute.COMMUNITY) {
                         CommunityScreen()
                     }
 
-                    composable<Main.Message> {
+                    composable(MainRoute.MESSAGE) {
                         MessageScreen()
                     }
-                    composable<Main.Profile> {
+                    composable(MainRoute.PROFILE) {
                         ProfileScreen()
                     }
                 }
@@ -199,29 +170,32 @@ fun MainScreen(
 
 //主界面底部导航信息
 data class MainInfo(
-    val id: Int, val name: String, val icon: ImageVector
+    val name: String, val icon: ImageVector, val route: String
 )
 
 val mainInfoList = listOf(
-    MainInfo(1, "首页", Icons.Filled.Home),
-    MainInfo(2, "社区", Icons.Filled.DateRange),
-    MainInfo(3, "AI小智", Icons.Filled.AccountBox),
-    MainInfo(4, "消息", Icons.Filled.MailOutline),
-    MainInfo(5, "我的", Icons.Filled.Person),
+    MainInfo("首页", Icons.Filled.Home, MainRoute.HOME),
+    MainInfo("社区", Icons.Filled.DateRange, MainRoute.COMMUNITY),
+    MainInfo("AI小智", Icons.Filled.AccountBox, BeginRoute.CHATBOT),
+    MainInfo("消息", Icons.Filled.MailOutline, MainRoute.MESSAGE),
+    MainInfo("我的", Icons.Filled.Person, MainRoute.PROFILE),
 )
 
-//自定义底部导航栏组件
+//底部导航栏组件
 @Preview(showBackground = true)
 @Composable
 fun MainBottomBar(
-    modifier: Modifier = Modifier, selectedId: Int = 1, onChangeId: (Int) -> Unit = {}
+    modifier: Modifier = Modifier, onNavigate: (String) -> Unit = {},
+    currentRoute: String? = MainRoute.HOME
 ) {
     Row(modifier = modifier.shadow(elevation = 0.5.dp)) {
         mainInfoList.forEach { item ->
 
+            val selected = currentRoute == item.route
+
             //点击的动画效果
-            val scale by animateFloatAsState(if (selectedId == item.id) 1.2f else 1f,
-                animationSpec = if (selectedId == item.id) {
+            val scale by animateFloatAsState(if (selected) 1.2f else 1f,
+                animationSpec = if (selected) {
                     keyframes {
                         1f at 0
                         1.5f at 175
@@ -240,13 +214,13 @@ fun MainBottomBar(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null // 禁用水波纹效果
                     ) {
-                        onChangeId(item.id)
-
+                        Log.d("miaoyoz1", "MainBottomBar: ${item.route} + $currentRoute")
+                        onNavigate(item.route)
                     },
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                if (item.id == 3) {
+                if (item.route == BeginRoute.CHATBOT) {
                     Icon(
                         imageVector = item.icon,
                         contentDescription = null,
@@ -259,7 +233,7 @@ fun MainBottomBar(
                         imageVector = item.icon,
                         contentDescription = null,
                         modifier = Modifier.scale(scale),
-                        tint = if (selectedId == item.id) Color(0XFF4157FF) else Color(0xFF090F47)
+                        tint = if (selected) Color(0XFF4157FF) else Color(0xFF090F47)
                     )
                 }
             }
